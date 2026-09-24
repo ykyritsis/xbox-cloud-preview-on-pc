@@ -1,0 +1,11 @@
+node_modules/
+.pnpm-store/
+dist/
+.git-work/
+.public-git/
+.packaging-staging/
+.demo-data/
+.demo-smoke-captures/
+launcher-preview*.png
+local-settings.json
+.visual-review/
