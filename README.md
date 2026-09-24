@@ -2,7 +2,7 @@
 
 An unofficial, controller-first launcher for your Windows games. It brings a console-style Home screen, a proper game library, and artwork-led game pages to the PC you already use.
 
-> **Community beta · 0.25.0-beta.1.** A purely fan-made project, not an official Xbox app or a Microsoft product. It is not affiliated with Microsoft, Sony, Valve, ASUS, or any game publisher.
+> **Community beta · 0.25.0-beta.2.** A purely fan-made project, not an official Xbox app or a Microsoft product. It is not affiliated with Microsoft, Sony, Valve, ASUS, or any game publisher.
 
 ![Illustrative mockup of the latest Home layout with sample game artwork](docs/screenshots/home-mockup.png)
 
@@ -45,7 +45,7 @@ The portable build does not need installation for each update. Replace the old `
 
 After the first import, Home opens from a saved library snapshot. A small progress indicator shows the background refresh. Fetched game artwork is saved locally, subject to a 600 MB cache limit and provider availability; it does not include the games themselves.
 
-On first launch, choose a profile and the libraries you want to import. The app scans locally installed games. For **uninstalled Steam games** and personal playtime, add your own Steam Web API key in Settings → Library, make your Steam profile's game details visible to that API key, and enable the uninstalled-games option. A SteamID64 is usually detected from the signed-in desktop client; it is an identifier, not a login.
+On first launch, choose a profile and connect your libraries. Setup now offers an optional SteamGridDB artwork key field and a direct link to its API preferences. The app scans locally installed games. For **uninstalled Steam games** and personal playtime, add your own Steam Web API key during setup or later in Settings → Library, make your Steam profile's game details visible to that API key, and enable the uninstalled-games option. A SteamID64 is usually detected from the signed-in desktop client; it is an identifier, not a login.
 
 SteamGridDB artwork is optional. Add your own SteamGridDB API key in Settings → Library → Artwork & achievement services for community artwork. The release contains no shared SteamGridDB key. Existing private-preview users retain keys already saved locally until they remove or reset them.
 

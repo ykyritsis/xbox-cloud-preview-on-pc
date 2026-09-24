@@ -1832,6 +1832,7 @@ async function performAction(action, source) {
         avatarId: selectedAvatarId,
         avatarImage: selectedAvatarId === 'custom-uploaded' ? customAvatarData : '',
         displayName,
+        steamGridDbKey: document.querySelector('#onboard-sgdb-key').value.trim(),
         steamApiKey: document.querySelector('#onboard-steam-key').value.trim(),
         xboxApiKey: document.querySelector('#onboard-xbox-key').value.trim(),
         steamId64: document.querySelector('#onboard-steam-id').value.trim(),
@@ -1978,6 +1979,11 @@ async function performAction(action, source) {
     try { await window.launcher.openSteamHelp(action === 'steam-open-privacy' ? 'privacy' : action === 'steam-open-client' ? 'client' : 'apiKey'); }
     catch (error) { showToast(error.message || 'Could not open Steam help'); }
     if (action === 'steam-open-client') setTimeout(refreshSteamLocalStatus, 2500);
+  }
+  if (action === 'sgdb-open-api-key') {
+    try { await window.launcher.openSteamHelp('sgdbApiKey'); }
+    catch (error) { showToast(error.message || 'Could not open SteamGridDB'); }
+    return;
   }
   if (action === 'open-fse-setup') {
     try { await window.launcher.openFseSetup(); }
@@ -2586,6 +2592,7 @@ window.launcher.getSettings().then(async (settings) => {
   else {
     document.querySelector('#onboard-name').value = settings.displayName === 'Player' ? '' : settings.displayName || '';
     document.querySelector('#onboard-steam-key').value = settings.steamApiKey || '';
+    document.querySelector('#onboard-sgdb-key').value = settings.steamGridDbKey || '';
     document.querySelector('#onboard-xbox-key').value = settings.xboxApiKey || '';
     document.querySelector('#onboard-steam-id').value = settings.steamId64 || '';
     document.querySelector('#onboard-uninstalled').checked = settings.showUninstalledSteam === true;

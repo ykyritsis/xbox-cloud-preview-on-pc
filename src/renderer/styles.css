@@ -78,6 +78,7 @@ nav { display: flex; align-self: stretch; gap: 24px; }
 .setup-heading h2 { margin: 6px 0 7px; font-size: clamp(30px, 4vw, 44px); letter-spacing: -.035em; }
 .setup-heading p, .setup-hint { color: #bbc8ce; font-size: 13px; line-height: 1.5; }
 .setup-field { margin: 18px 0; font-size: 13px; color: #dce5e8; }
+.setup-optional-label { margin-left: 8px; color: #aeb9bf; font-size: 11px; font-weight: 500; }
 .setup-field input { display: block; width: 100%; padding: 12px 14px; margin-top: 7px; border: 1px solid #627078; border-radius: 6px; background: #0b1115; color: #fff; }
 .setup-label { display: block; margin: 22px 0 10px; font-size: 14px; }
 .setup-divider { height: 1px; margin: 20px 0; background: #ffffff2c; }

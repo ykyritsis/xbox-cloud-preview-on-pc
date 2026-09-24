@@ -1466,6 +1466,7 @@ function registerIpc() {
     const urls = {
       privacy: 'https://steamcommunity.com/my/edit/settings',
       apiKey: 'https://steamcommunity.com/dev/apikey',
+      sgdbApiKey: 'https://www.steamgriddb.com/profile/preferences/api',
       client: 'steam://open/games',
       xboxApiKey: 'https://xbl.io',
       epicHelper: 'https://github.com/legendary-gl/legendary#quickstart'
