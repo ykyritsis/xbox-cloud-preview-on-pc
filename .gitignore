@@ -4,6 +4,7 @@ dist/
 .git-work/
 .public-git/
 .packaging-staging/
+.beta-build-stage/
 .demo-data/
 .demo-smoke-captures/
 launcher-preview*.png

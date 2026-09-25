@@ -8,6 +8,9 @@ contextBridge.exposeInMainWorld('launcher', {
   onLibraryTrending: (callback) => { const listener = (_event, data) => callback(data); ipcRenderer.on('library:trending', listener); return () => ipcRenderer.removeListener('library:trending', listener); },
   onLibraryArtwork: (callback) => { const listener = (_event, data) => callback(data); ipcRenderer.on('library:artwork', listener); return () => ipcRenderer.removeListener('library:artwork', listener); },
   launchGame: (gameId, launchOptions) => ipcRenderer.invoke('game:launch', gameId, launchOptions),
+  getActiveGameSession: () => ipcRenderer.invoke('game:active-session'),
+  returnToGame: (gameId) => ipcRenderer.invoke('game:return', gameId),
+  organizeLibrary: (action, payload) => ipcRenderer.invoke('library:organize', action, payload),
   launchSteamBigPicture: (gameId) => ipcRenderer.invoke('launcher:steam-big-picture', gameId),
   saveGameLaunchOptions: (gameId, options) => ipcRenderer.invoke('game:launch-options:save', gameId, options),
   saveGameCategory: (gameId, isApp) => ipcRenderer.invoke('game:category:save', gameId, isApp),
@@ -45,5 +48,6 @@ contextBridge.exposeInMainWorld('launcher', {
   openFeedback: () => ipcRenderer.invoke('app:feedback'),
   openFseSetup: () => ipcRenderer.invoke('app:fse-setup'),
   minimizeLauncher: () => ipcRenderer.invoke('app:minimize-to-taskbar'),
-  quit: () => ipcRenderer.invoke('app:quit')
+  quit: () => ipcRenderer.invoke('app:quit'),
+  powerAction: (action) => ipcRenderer.invoke('app:power', action)
 });

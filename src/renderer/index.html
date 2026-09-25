@@ -35,6 +35,9 @@
         <button class="icon-button focusable" data-action="settings" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06a1.7 1.7 0 0 0-1.88-.34 1.7 1.7 0 0 0-1.03 1.56V21h-4v-.08A1.7 1.7 0 0 0 9 19.37a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.63 15a1.7 1.7 0 0 0-1.55-1.02H3v-4h.08A1.7 1.7 0 0 0 4.63 9a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.63a1.7 1.7 0 0 0 1.02-1.55V3h4v.08A1.7 1.7 0 0 0 15 4.63a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.37 9a1.7 1.7 0 0 0 1.55 1.02H21v4h-.08A1.7 1.7 0 0 0 19.4 15Z"/></svg>
         </button>
+        <button id="power-button" class="icon-button focusable power-button" type="button" data-action="power-menu" aria-label="Power options" title="Power options">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2v9"/><path d="M6.35 5.7a9 9 0 1 0 11.3 0"/></svg>
+        </button>
         <button id="profile-button" class="profile focusable" type="button" data-action="avatar-picker" aria-label="Open player profile"><span id="profile-avatar"></span></button>
       </div>
     </header>
@@ -74,6 +77,8 @@
           </div>
           <div id="recent-row" class="game-row" role="list"></div>
         </section>
+
+        <section class="shelf collection-shelf favorites-shelf" id="favorites-shelf" aria-labelledby="favorites-title" hidden><div class="section-heading"><h2 id="favorites-title">Favorites</h2><span>Your picks, ready when you are</span></div><div id="favorites-row" class="game-row" role="list"></div></section>
 
         <section class="shelf collection-shelf recently-played-shelf" id="recently-played-shelf" aria-labelledby="recently-played-title" hidden>
           <div class="section-heading"><h2 id="recently-played-title">Recently played</h2><span>Your recently launched games</span></div>
@@ -132,7 +137,7 @@
         <div class="library-extra-filters" aria-label="Library filters"><div class="filter-chips"><button class="filter-chip focusable active" type="button" data-action="library-install-filter" data-installed="all">All installs</button><button class="filter-chip focusable" type="button" data-action="library-install-filter" data-installed="installed">Installed</button><button class="filter-chip focusable" type="button" data-action="library-install-filter" data-installed="uninstalled">Not installed</button></div><select id="library-source-filter" class="library-sort focusable" aria-label="Filter by source"><option value="all">All sources</option><option value="Steam">Steam</option><option value="Epic Games">Epic Games</option><option value="Xbox PC">Xbox PC</option><option value="PC">Custom PC</option><option value="Ubisoft Connect">Ubisoft Connect</option><option value="EA app">EA app</option><option value="Battle.net">Battle.net</option><option value="GOG Galaxy">GOG Galaxy</option><option value="Amazon Games">Amazon Games</option><option value="Rockstar Games">Rockstar Games</option><option value="Riot Games">Riot Games</option><option value="itch.io">itch.io</option></select></div>
         <div class="library-heading-row">
           <h1 id="library-heading">My games</h1>
-          <select id="library-collection" class="library-sort focusable" aria-label="Filter by collection"><option value="all">All collections</option><option value="controller">Controller ready</option><option value="solo">Single player</option><option value="multiplayer">Multiplayer</option><option value="installed">Ready to play</option></select>
+          <select id="library-collection" class="library-sort focusable" aria-label="Filter by collection"><option value="all">All collections</option><option value="favorites">Favorites</option><option value="controller">Controller ready</option><option value="solo">Single player</option><option value="multiplayer">Multiplayer</option><option value="installed">Ready to play</option></select>
           <select id="library-sort" class="library-sort focusable" aria-label="Sort library"><option value="recent">Last played</option><option value="name">Name</option><option value="provider">Source</option><option value="playtime">Steam hours</option></select>
         </div>
         <div id="library-grid" class="library-grid" role="list"></div>
@@ -149,12 +154,13 @@
         </div>
         <div id="detail-rating" class="detail-rating"></div>
         <div class="detail-content">
+          <section class="detail-section detail-overview" aria-labelledby="overview-heading"><div class="detail-section-heading"><div><span class="eyebrow">AT A GLANCE</span><h2 id="overview-heading">Overview</h2></div><span id="detail-metadata-source" class="detail-metadata-source"></span></div><div id="detail-overview-grid" class="detail-overview-grid"></div></section>
           <section class="detail-section" aria-labelledby="gallery-heading"><h2 id="gallery-heading">Gallery</h2><div id="detail-gallery" class="detail-gallery" role="list"></div></section>
           <section class="shelf news-shelf detail-news" id="news-shelf" aria-labelledby="news-title" hidden><div class="section-heading"><h2 id="news-title">Latest updates</h2><span id="news-subtitle">News for this game</span></div><div id="news-row" class="news-row" role="list"></div></section>
           <section class="detail-section detail-info" aria-labelledby="details-heading"><h2 id="details-heading">Game details</h2><article id="detail-info-grid" class="detail-game-details-card"><h3>Description</h3><div class="detail-meta-row"><div><strong>Published by</strong><span id="detail-publisher">Not available</span></div><div><strong>Developed by</strong><span id="detail-developer">Not available</span></div><div><strong>Release date</strong><span id="detail-release-date">Not available</span></div></div><p id="detail-full-description" class="detail-full-description">Game details are loading…</p><button id="detail-description-more" class="detail-description-more focusable" type="button" data-action="detail-description-more" hidden>View more</button></article></section>
           <section class="detail-section detail-capabilities" aria-labelledby="capabilities-heading"><h2 id="capabilities-heading">Play and capabilities</h2><div class="detail-capability-panel"><div><h3>Playable on</h3><div id="detail-platforms" class="detail-pills"></div></div><div><h3>Playable with</h3><div id="detail-inputs" class="detail-pills"></div></div><div><h3>Capabilities</h3><div id="detail-capabilities" class="detail-pills"></div></div></div></section>
           <section class="detail-section detail-dlc" aria-labelledby="dlc-heading"><h2 id="dlc-heading">Available DLC</h2><p id="detail-dlc-note"></p><div id="detail-dlc-grid" class="detail-dlc-grid"></div></section>
-          <section class="detail-section detail-achievements" aria-labelledby="achievements-heading"><div class="achievement-heading"><div><h2 id="achievements-heading">Achievements</h2><p id="detail-achievements-note"></p></div><strong id="achievement-progress-label"></strong></div><div id="achievement-progress" class="achievement-progress" hidden><span></span></div><div id="achievement-filters" class="achievement-filters" hidden><button class="achievement-filter focusable active" type="button" data-action="achievement-filter" data-filter="all">All</button><button class="achievement-filter focusable" type="button" data-action="achievement-filter" data-filter="unlocked">Unlocked</button><button class="achievement-filter focusable" type="button" data-action="achievement-filter" data-filter="locked">Locked</button></div><div id="detail-achievements-grid" class="detail-achievements-grid"></div><button id="achievement-more" class="secondary focusable" type="button" data-action="achievement-more" hidden>Show all achievements</button><button id="achievement-trueachievements" class="secondary focusable" type="button" data-action="open-trueachievements" hidden>Search TrueAchievements ↗</button></section>
+          <section class="detail-section detail-achievements" aria-labelledby="achievements-heading"><div class="achievement-heading"><div id="achievement-game-art" class="achievement-game-art"></div><div class="achievement-heading-copy"><span class="eyebrow">YOUR GAME</span><h2 id="achievements-heading">Achievements</h2><p id="detail-achievements-note"></p></div><div class="achievement-summary"><span id="achievement-source-label"></span><strong id="achievement-progress-label"></strong></div></div><div id="achievement-progress" class="achievement-progress" hidden><span></span></div><div id="achievement-filters" class="achievement-filters" hidden><button class="achievement-filter focusable active" type="button" data-action="achievement-filter" data-filter="all">All</button><button class="achievement-filter focusable" type="button" data-action="achievement-filter" data-filter="unlocked">Unlocked</button><button class="achievement-filter focusable" type="button" data-action="achievement-filter" data-filter="locked">Locked</button></div><div id="detail-achievements-grid" class="detail-achievements-grid"></div><button id="achievement-more" class="secondary focusable" type="button" data-action="achievement-more" hidden>Show all achievements</button><button id="achievement-trueachievements" class="secondary focusable" type="button" data-action="open-trueachievements" hidden>Search TrueAchievements ↗</button></section>
         </div>
       </section>
     </main>
@@ -218,6 +224,8 @@
                 <label class="toggle-row"><span><strong>Shuffle home backgrounds</strong><small>Use a different game screenshot as the home backdrop when you select a game.</small></span><input class="focusable" id="shuffle-home-screenshots-toggle" type="checkbox" /></label>
                 <label class="toggle-row"><span><strong>Shuffle game page screenshots</strong><small>Use a different store screenshot as the game page background each time you open it.</small></span><input class="focusable" id="random-screenshot-background-toggle" type="checkbox" /></label>
                 <label class="scale-setting"><span><strong>Interface scale</strong><small>Adjust tile and text size for a handheld or monitor.</small></span><span id="scale-value">100%</span><input class="focusable" id="ui-scale" type="range" min="75" max="150" step="5" value="100" /></label>
+                <label class="scale-setting"><span><strong>Text size</strong><small>Make labels and game information easier to read from a TV.</small></span><span id="text-size-value">100%</span><input class="focusable" id="text-size" type="range" min="100" max="130" step="5" value="100" /></label>
+                <label class="toggle-row"><span><strong>High-contrast focus</strong><small>Use a stronger white focus border for controller navigation.</small></span><input class="focusable" id="high-contrast-focus-toggle" type="checkbox" /></label>
                 <div class="appearance-preview"><div id="appearance-preview-tile" class="appearance-preview-tile"><span id="appearance-preview-title">Your game</span></div><div><strong>Live preview</strong><small>Changes to scale, corners, and motion appear as you adjust them. Close Settings to discard them, or save to keep them.</small></div></div>
                 <label class="scale-setting"><span><strong>Tile corners</strong><small>Choose square or softly rounded library covers.</small></span><span id="radius-value">8 px</span><input class="focusable" id="tile-radius" type="range" min="0" max="24" step="2" value="8" /></label>
                 <label class="toggle-row"><span><strong>Reduced motion</strong><small>Use simpler transitions across the launcher.</small></span><input class="focusable" id="reduced-motion-toggle" type="checkbox" /></label>
@@ -251,6 +259,7 @@
         </header>
         <section class="options-primary-actions">
           <button class="option-button option-play focusable" type="button" data-action="options-launch"><span class="option-action-glyph">▶</span><span class="option-action-copy"><strong>Play</strong><small>Start this game</small></span><span class="option-action-arrow">›</span></button>
+          <button class="option-button option-return focusable" id="options-return" type="button" data-action="return-to-game" hidden><span class="option-action-glyph">↩</span><span class="option-action-copy"><strong>Return to game</strong><small>Switch back to your last launch</small></span><span class="option-action-arrow">›</span></button>
         </section>
         <p class="options-overview-note">Your game. Your way.</p>
         </div>
@@ -262,6 +271,7 @@
         </nav>
         <div class="options-page" id="options-page-manage" role="tabpanel" aria-labelledby="options-tab-manage" data-options-page="manage">
         <h3 class="options-page-title">Manage your game</h3><p class="options-page-description">Everything you need, a button away.</p>
+        <section class="options-group options-panel"><div class="options-panel-heading"><span class="options-panel-icon">★</span><div><span class="options-group-label">YOUR LIBRARY</span><p>Keep this game close</p></div></div><div class="options-shortcuts"><button id="favorite-game-button" class="option-button focusable" type="button" data-action="toggle-favorite">Add to Favorites <span>☆</span></button><button class="option-button focusable" type="button" data-action="edit-game-collections">Collections <span>›</span></button></div></section>
         <section id="steam-management-group" class="options-group options-panel steam-options-panel" hidden>
           <div class="options-panel-heading"><span class="options-panel-icon steam-panel-icon"><img src="assets/steam.svg" alt="" /></span><div><span class="options-group-label">STEAM</span><p>Store, library and install controls</p></div></div>
           <div class="options-shortcuts">
@@ -312,12 +322,14 @@
       </form>
     </dialog>
 
+    <dialog id="collections-dialog" class="collections-dialog" aria-labelledby="collections-title"><div class="dialog-header"><div><span class="eyebrow">YOUR LIBRARY</span><h2 id="collections-title">Collections</h2><p id="collections-subtitle">Organize this game.</p></div><button class="close-button focusable" type="button" data-action="collections-close" aria-label="Close collections">×</button></div><div id="collections-list" class="collections-list"></div><form id="collection-create-form" class="collection-create-form"><label for="collection-name">New collection</label><div><input id="collection-name" class="focusable" type="text" maxlength="40" autocomplete="off" placeholder="Name your collection" required /><button class="primary focusable" type="submit">Create</button></div></form><p class="collections-help">Collections stay on this PC. You can add any game from its options.</p></dialog>
+
     <dialog id="steam-launch-dialog" class="steam-launch-dialog" aria-labelledby="steam-launch-title"><span class="eyebrow">STEAM</span><h2 id="steam-launch-title">How would you like to open Steam?</h2><p>Choose the familiar desktop library or a controller-ready Big Picture view.</p><div class="steam-launch-actions"><button class="focusable" type="button" data-action="steam-launch-desktop"><strong>Desktop library</strong><small>Open Steam normally</small></button><button class="focusable" type="button" data-action="steam-launch-big-picture"><strong>Big Picture mode</strong><small>Made for a TV or handheld</small></button></div><button class="steam-launch-cancel focusable" type="button" data-action="steam-launch-cancel">Cancel</button></dialog>
 
     <dialog id="achievement-dialog" class="achievement-dialog" aria-labelledby="achievement-detail-title">
       <button class="close-button focusable" type="button" data-action="achievement-close" aria-label="Close achievement">×</button>
       <div id="achievement-detail-art" class="achievement-detail-art"></div>
-      <div class="achievement-detail-copy"><span class="eyebrow">ACHIEVEMENT</span><h2 id="achievement-detail-title"></h2><p id="achievement-detail-description"></p><span id="achievement-detail-status" class="achievement-status"></span><button class="primary focusable" type="button" data-action="achievement-close">Done</button></div>
+      <div class="achievement-detail-copy"><span id="achievement-detail-game" class="eyebrow">ACHIEVEMENT</span><h2 id="achievement-detail-title"></h2><p id="achievement-detail-description"></p><span id="achievement-detail-status" class="achievement-status"></span><button class="primary focusable" type="button" data-action="achievement-close">Done</button></div>
     </dialog>
 
     <dialog id="custom-game-dialog">
@@ -423,6 +435,19 @@
     </dialog>
 
     <div id="scan-progress" class="scan-progress" role="status" aria-live="polite" hidden><div class="scan-progress-top"><strong>Importing your library</strong><span id="scan-percent">0%</span></div><p id="scan-message">Finding games…</p><div class="scan-track"><span id="scan-fill"></span></div></div>
+
+    <dialog id="power-dialog" class="power-dialog" aria-labelledby="power-title">
+      <div class="power-header"><div><span class="eyebrow">THIS PC</span><h2 id="power-title">Power options</h2><p>Choose what happens next.</p></div><button class="power-close focusable" type="button" data-action="power-close" aria-label="Close power options">×</button></div>
+      <div id="power-choices" class="power-choices">
+        <button class="power-choice focusable" type="button" data-action="power-select" data-power="sleep"><span class="power-choice-icon" aria-hidden="true">☾</span><span><strong>Sleep</strong><small>Pause your PC and return quickly</small></span><b aria-hidden="true">›</b></button>
+        <button class="power-choice focusable" type="button" data-action="power-select" data-power="hibernate"><span class="power-choice-icon" aria-hidden="true">◑</span><span><strong>Hibernate</strong><small>Save your session using minimal power</small></span><b aria-hidden="true">›</b></button>
+        <button class="power-choice focusable" type="button" data-action="power-select" data-power="restart"><span class="power-choice-icon" aria-hidden="true">↻</span><span><strong>Restart</strong><small>Close apps and start Windows again</small></span><b aria-hidden="true">›</b></button>
+        <button class="power-choice focusable" type="button" data-action="power-select" data-power="shutdown"><span class="power-choice-icon" aria-hidden="true">⏻</span><span><strong>Shut down</strong><small>Turn off this PC</small></span><b aria-hidden="true">›</b></button>
+        <button class="power-choice focusable" type="button" data-action="power-select" data-power="exit"><span class="power-choice-icon" aria-hidden="true">✕</span><span><strong>Exit launcher</strong><small>Keep Windows running</small></span><b aria-hidden="true">›</b></button>
+      </div>
+      <div id="power-confirm" class="power-confirm" hidden><div class="power-confirm-mark" aria-hidden="true">⏻</div><h3 id="power-confirm-title">Sleep this PC?</h3><p id="power-confirm-copy"></p><p id="power-error" class="power-error" role="alert" hidden></p><div class="power-confirm-actions"><button class="secondary focusable" type="button" data-action="power-back">Cancel</button><button id="power-confirm-button" class="primary focusable" type="button" data-action="power-confirm">Confirm</button></div></div>
+      <div class="power-footer"><span>Save your work before changing Windows power state.</span><span><kbd class="xb-button">B</kbd> Back</span></div>
+    </dialog>
 
     <dialog id="controller-status-dialog" class="controller-status-dialog" aria-labelledby="controller-status-title">
       <div class="controller-status-content">

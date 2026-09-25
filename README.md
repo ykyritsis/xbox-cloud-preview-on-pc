@@ -2,7 +2,7 @@
 
 An unofficial, controller-first launcher for your Windows games. It brings a console-style Home screen, a proper game library, and artwork-led game pages to the PC you already use.
 
-> **Community beta · 0.25.0-beta.2.** A purely fan-made project, not an official Xbox app or a Microsoft product. It is not affiliated with Microsoft, Sony, Valve, ASUS, or any game publisher.
+> **Community beta · 0.26.0-beta.3.** A purely fan-made project, not an official Xbox app or a Microsoft product. It is not affiliated with Microsoft, Sony, Valve, ASUS, or any game publisher.
 
 ![Illustrative mockup of the latest Home layout with sample game artwork](docs/screenshots/home-mockup.png)
 
@@ -25,12 +25,16 @@ An unofficial, controller-first launcher for your Windows games. It brings a con
 - Can shuffle a game’s store screenshots into its detail-page backdrop, with a setting to turn that on or off.
 - Offers live interface scaling, tile-corner choices, reduced motion, and optional UI sounds.
 - Can be launched as an Xbox Full Screen Experience Home app through a compatible bridge; see [Xbox Mode setup](docs/xbox-mode.md).
+- Adds Favorites and custom collections, a clearer TV-focused game overview, and a Home Library tile that previews the next games rather than repeating the visible row.
+- Shows public Steam achievement catalogs with available artwork and rarity without a key. Personal unlock progress is shown only when it can be verified.
+- Includes optional larger text and high-contrast focus, plus confirmed sleep, hibernate, restart, and shutdown actions in the top-right Power menu.
+- Provides a Return to game action after launching; for direct executables it checks the process, while storefront launches offer only a time-limited return shortcut.
 
 | Library | Game page |
 | --- | --- |
 | ![Library of sample games](docs/screenshots/library.png) | ![Sample game details page](docs/screenshots/game-details.png) |
 
-The screenshots use a sample library; no personal account or installed-game list is included. The library and game-page captures below are from an earlier beta layout.
+The screenshots use a sample library; no personal account or installed-game list is included.
 
 ## Try it
 

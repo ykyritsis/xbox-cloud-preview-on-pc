@@ -4,6 +4,8 @@ const path = require('path');
 const { fileURLToPath } = require('url');
 const { spawn, execFile } = require('child_process');
 const { createArtworkCache } = require('./artwork-cache.cjs');
+const { runPowerAction } = require('./power-actions.cjs');
+const { parseSteamCommunityAchievements, safeSteamIcon } = require('./steam-public-achievements.cjs');
 
 if (process.env.NEBULA_DEMO === '1') {
   app.setPath('userData', process.env.NEBULA_DEMO_USER_DATA || path.join(app.getPath('temp'), 'xbox-preview-ui-demo'));
@@ -19,6 +21,8 @@ const steamDiscoveryArtworkCache = new Map();
 let steamDiscoveryArtworkRunning = false;
 let xboxTitleHistoryCache = { at: 0, apiKey: '', xuid: '', titles: [] };
 const xboxAchievementCache = new Map();
+const publicSteamAchievementCache = new Map();
+let activeGameSession = null;
 
 const SETTINGS_DEFAULTS = {
   steamGridDbKey: '',
@@ -34,6 +38,8 @@ const SETTINGS_DEFAULTS = {
   artwork: {},
   playHistory: [],
   playCounts: {},
+  favoriteGameIds: [],
+  customCollections: [],
   steamAppDetails: {},
   gameLaunchOptions: {},
   gameCategoryOverrides: {},
@@ -47,12 +53,15 @@ const SETTINGS_DEFAULTS = {
   displayName: 'Player',
   uiScale: 1,
   tileRadius: 8,
+  textScale: 1,
+  highContrastFocus: false,
   reducedMotion: false,
   useRandomScreenshotBackground: true,
   shuffleHomeScreenshots: true
 };
 
 let settingsWriteQueue = Promise.resolve();
+let libraryOrganizationQueue = Promise.resolve();
 let librarySnapshotWriteQueue = Promise.resolve();
 let artworkScanEpoch = 0;
 
@@ -629,10 +638,10 @@ async function fetchGameDetails(game) {
   const cached = gameDetailCache.get(game.id);
   if (cached && Date.now() - cached.at < 15 * 60 * 1000) return cached.data;
   const fallback = {
-    title: game.title, provider: game.provider, description: '', genres: [], developer: '', publisher: '', releaseDate: '',
+    title: game.title, provider: game.provider, description: '', fullDescription: '', genres: [], developer: '', publisher: '', releaseDate: '',
     screenshots: game.artwork?.screenshots || [], dlc: [], dlcStatus: 'unavailable',
     ageRating: '', controllerSupport: game.controls || 'unknown', categories: [], playableOn: ['PC'],
-    achievementCount: 0, supportedLanguages: '', metacriticScore: null
+    achievementCount: 0, supportedLanguages: '', metacriticScore: null, metadataSource: 'Local library'
   };
   const xboxFallback = async () => {
     const xboxDetails = await fetchXboxCatalogDetails(game.title);
@@ -657,10 +666,12 @@ async function fetchGameDetails(game) {
     const body = await response.json();
     const item = body?.[appId]?.success ? body[appId].data : null;
     if (!item) return xboxFallback();
+    const plainText = (value) => String(value || '').replace(/<br\s*\/?\s*>/gi, '\n').replace(/<[^>]+>/g, ' ').replace(/&(?:amp|quot|apos|lt|gt|nbsp);/gi, (entity) => ({ '&amp;': '&', '&quot;': '"', '&apos;': "'", '&lt;': '<', '&gt;': '>', '&nbsp;': ' ' })[entity.toLowerCase()] || ' ').replace(/[ \t]+/g, ' ').trim();
     const details = {
       ...fallback,
       title: item.name || game.title,
-      description: String(item.short_description || '').replace(/<[^>]+>/g, '').trim(),
+      description: plainText(item.short_description),
+      fullDescription: plainText(item.about_the_game || item.detailed_description || item.short_description).slice(0, 10000),
       genres: (item.genres || []).map((entry) => entry.description).filter(Boolean).slice(0, 5),
       developer: (item.developers || []).join(', '),
       publisher: (item.publishers || []).join(', '),
@@ -672,6 +683,7 @@ async function fetchGameDetails(game) {
       achievementCount: Number(item.achievements?.total) || 0,
       supportedLanguages: String(item.supported_languages || '').replace(/<br\s*\/?\s*>/gi, ', ').replace(/<[^>]+>/g, '').replace(/\*+\s*languages with full audio support.*$/i, '').replace(/\*/g, '').split(',').map((language) => language.trim()).filter(Boolean).slice(0, 8).join(', '),
       metacriticScore: Number(item.metacritic?.score) || null,
+      metadataSource: 'Steam Store',
       screenshots: (item.screenshots || []).map((entry) => entry.path_full || entry.path_thumbnail).filter((url) => /^https:\/\/[^/]*steamstatic\.com\//i.test(url)).slice(0, 12),
       dlcStatus: 'unavailable'
     };
@@ -682,9 +694,13 @@ async function fetchGameDetails(game) {
       const xbox = await fetchXboxCatalogDetails(game.title);
       if (xbox) {
         details.description ||= xbox.description || '';
+        details.fullDescription ||= xbox.fullDescription || xbox.description || '';
         if (!details.screenshots.length) details.screenshots = xbox.screenshots || [];
         details.publisher ||= xbox.publisher || '';
         details.developer ||= xbox.developer || '';
+        if (!details.genres.length) details.genres = xbox.genres || [];
+        details.releaseDate ||= xbox.releaseDate || '';
+        if (!details.categories.length) details.categories = xbox.categories || [];
       }
     }
     if (!details.screenshots.length) details.screenshots = fallback.screenshots;
@@ -838,13 +854,6 @@ async function fetchGameAchievements(game) {
       if (match?.id && titleMatchScore(game.title, match.name) >= 82) appId = String(match.id);
     } catch { /* A non-Steam game may have no Steam edition. */ }
   }
-  const safeSteamIcon = (value) => {
-    try {
-      const url = new URL(String(value || ''));
-      if (url.protocol === 'http:') url.protocol = 'https:';
-      return url.protocol === 'https:' && (url.hostname.endsWith('.steamstatic.com') || url.hostname === 'steamstatic.com' || url.hostname.endsWith('.akamaihd.net')) ? url.toString() : null;
-    } catch { return null; }
-  };
   if (appId) {
     if (settings.steamApiKey) try {
       const schemaUrl = new URL('https://api.steampowered.com/ISteamUserStats/GetSchemaForGame/v2/');
@@ -867,6 +876,7 @@ async function fetchGameAchievements(game) {
         const unlocked = new Map((player?.playerstats?.achievements || []).map((entry) => [entry.apiname, Boolean(entry.achieved)]));
         if (available.length) return {
           status: referenceOnly ? 'reference-only' : 'ready',
+          source: 'Steam',
           progressAvailable: !referenceOnly && Boolean(player?.playerstats?.success),
           items: available.slice(0, 150).map((entry) => ({
             id: entry.name, title: entry.displayName || entry.name,
@@ -878,21 +888,19 @@ async function fetchGameAchievements(game) {
       }
     } catch { /* Public and Xbox catalogs remain available if Steam API data is missing. */ }
 
+    const cachedPublicCatalog = publicSteamAchievementCache.get(appId);
+    if (cachedPublicCatalog && Date.now() - cachedPublicCatalog.at < 6 * 60 * 60 * 1000) return {
+      status: referenceOnly ? 'reference-only' : 'catalog-only', source: 'Steam Community', progressAvailable: false, items: cachedPublicCatalog.items
+    };
     try {
       const response = await fetch(`https://steamcommunity.com/stats/${encodeURIComponent(appId)}/achievements/?l=english`, { signal: AbortSignal.timeout(10000) });
       if (response.ok) {
         const html = await response.text();
-        const decode = (value) => String(value || '').replace(/<[^>]*>/g, '').replace(/&(#x[\da-f]+|#\d+|amp|quot|apos|lt|gt|nbsp);/gi, (_entity, code) => {
-          const named = { amp: '&', quot: '"', apos: "'", lt: '<', gt: '>', nbsp: ' ' };
-          return code[0] === '#' ? String.fromCodePoint(parseInt(code.slice(code[1]?.toLowerCase() === 'x' ? 2 : 1), code[1]?.toLowerCase() === 'x' ? 16 : 10)) : named[code.toLowerCase()] || ' ';
-        }).trim();
-        const items = html.split(/<div class="achieveRow\b/i).slice(1, 151).map((chunk, index) => {
-          const icon = safeSteamIcon(chunk.match(/<img[^>]+src="([^"]+)"/i)?.[1]);
-          const title = decode(chunk.match(/<h3[^>]*>([\s\S]*?)<\/h3>/i)?.[1]);
-          const description = decode(chunk.match(/<h5[^>]*>([\s\S]*?)<\/h5>/i)?.[1]);
-          return title ? { id: `${appId}-${index}`, title, description, icon, lockedIcon: null, unlocked: null } : null;
-        }).filter(Boolean);
-        if (items.length) return { status: referenceOnly ? 'reference-only' : 'catalog-only', progressAvailable: false, items };
+        const items = parseSteamCommunityAchievements(html, appId);
+        if (items.length) {
+          publicSteamAchievementCache.set(appId, { at: Date.now(), items });
+          return { status: referenceOnly ? 'reference-only' : 'catalog-only', source: 'Steam Community', progressAvailable: false, items };
+        }
       }
     } catch { /* An authenticated Xbox catalog may have this game's achievement data. */ }
   }
@@ -998,16 +1006,38 @@ async function fetchXboxCatalogDetails(title) {
     if (!product || titleMatchScore(title, product.ProductTitle || product.LocalizedProperties?.[0]?.ProductTitle || '') < 82) return null;
     const localized = product.LocalizedProperties?.[0] || product;
     const images = localized.Images || product.Images || [];
+    const market = product.MarketProperties?.[0] || {};
+    const attributes = product.Properties?.Attributes || [];
+    const hasAttribute = (name) => attributes.some((entry) => entry.Name === name);
+    const playerRange = (name) => {
+      const attribute = attributes.find((entry) => entry.Name === name);
+      return attribute?.Minimum && attribute?.Maximum ? ` (${attribute.Minimum}–${attribute.Maximum})` : '';
+    };
+    const desktopFeature = (name) => attributes.some((entry) => entry.Name === name && entry.ApplicablePlatforms?.some((platform) => /desktop|pc/i.test(platform)));
+    const categories = [
+      hasAttribute('XblOnlineCoop') ? `Xbox online co-op${playerRange('XblOnlineCoop')}` : '',
+      hasAttribute('XblOnlineMultiPlayer') ? `Xbox online multiplayer${playerRange('XblOnlineMultiPlayer')}` : '',
+      hasAttribute('XblCrossPlatformMultiPlayer') ? 'Cross-platform multiplayer' : '',
+      desktopFeature('CapabilityHDR') ? 'HDR on PC' : '',
+      desktopFeature('Capability4k') ? '4K on PC' : '',
+      hasAttribute('XblAchievements') ? 'Xbox achievements' : ''
+    ].filter(Boolean);
+    const release = Date.parse(market.OriginalReleaseDate || '');
     const screenshots = (Array.isArray(images) ? images : [])
       .filter((image) => /screen|hero/i.test(String(image.ImagePurpose || '')))
       .map(catalogImageUrl).filter(isAllowedArtworkUrl).slice(0, 12);
     return {
       title: localized.ProductTitle || product.ProductTitle || title,
       description: String(localized.ShortDescription || localized.ProductDescription || '').replace(/<[^>]+>/g, '').trim(),
+      fullDescription: String(localized.ProductDescription || localized.ShortDescription || '').replace(/<[^>]+>/g, '').trim(),
       publisher: localized.PublisherName || product.PublisherName || '',
       developer: localized.DeveloperName || '',
+      genres: product.Properties?.Category ? [String(product.Properties.Category)] : [],
+      releaseDate: Number.isFinite(release) ? new Date(release).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '',
+      categories,
       screenshots,
-      dlcStatus: 'unavailable'
+      dlcStatus: 'unavailable',
+      metadataSource: 'Xbox Store'
     };
   } catch { return null; }
 }
@@ -1294,6 +1324,10 @@ async function scanLibrary({ refreshArt = false } = {}) {
     xboxAchievementReference: (settings.xboxAchievementReferences || {})[game.id] || null,
     controls: capabilitiesByGame[game.id] || game.controls || artwork[game.id]?.controls || 'unknown'
   }));
+  const latestPlaySettings = await readSettings();
+  const latestHistoryRank = new Map((latestPlaySettings.playHistory || []).map((id, index) => [id, index]));
+  currentLibrary.forEach((game) => { game.playCount = Number(latestPlaySettings.playCounts?.[game.id] || 0); });
+  currentLibrary.sort((a, b) => (latestHistoryRank.get(a.id) ?? Number.MAX_SAFE_INTEGER) - (latestHistoryRank.get(b.id) ?? Number.MAX_SAFE_INTEGER));
   const librarySummary = { steamStatus: ownedResult.status, steamOwnedCount: ownedResult.count || 0, steamId64: ownedResult.steamId64 || '', showUninstalledSteam: settings.showUninstalledSteam === true, steamApiKeyConfigured: Boolean(settings.steamApiKey), epicStatus: epicOwnedResult.status, epicOwnedCount: epicOwnedResult.games.length, epicHelperPath: epicOwnedResult.helperPath, showUninstalledEpic: settings.showUninstalledEpic === true };
   if (scanEpoch === artworkScanEpoch) {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('library:initial', { games: currentLibrary, ...librarySummary });
@@ -1376,7 +1410,7 @@ function launchExecutable(filePath, args = '', cwd = path.dirname(filePath)) {
     child.once('error', reject);
     child.once('spawn', () => {
       child.unref();
-      resolve(true);
+      resolve(child.pid);
     });
   });
 }
@@ -1523,6 +1557,8 @@ function registerIpc() {
     }
     if ('tileRadius' in incoming) allowed.tileRadius = Math.max(0, Math.min(24, Number(incoming.tileRadius) || 0));
     if ('reducedMotion' in incoming) allowed.reducedMotion = Boolean(incoming.reducedMotion);
+    if ('textScale' in incoming) allowed.textScale = Math.max(1, Math.min(1.3, Number(incoming.textScale) || 1));
+    if ('highContrastFocus' in incoming) allowed.highContrastFocus = Boolean(incoming.highContrastFocus);
     if ('useRandomScreenshotBackground' in incoming) allowed.useRandomScreenshotBackground = Boolean(incoming.useRandomScreenshotBackground);
     if ('shuffleHomeScreenshots' in incoming) allowed.shuffleHomeScreenshots = Boolean(incoming.shuffleHomeScreenshots);
     const saved = await writeSettings(allowed);
@@ -1571,6 +1607,7 @@ function registerIpc() {
     await fs.rm(cacheDirectory, { recursive: true, force: true });
     await replaceSettings({ ...SETTINGS_DEFAULTS });
     currentLibrary = [];
+    activeGameSession = null;
     gameDetailCache.clear();
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setFullScreen(SETTINGS_DEFAULTS.fullscreen);
@@ -1585,6 +1622,7 @@ function registerIpc() {
     const optionText = String(launchOptions ?? game.launchOptions ?? '').trim();
     if (optionText.length > 512 || /[\r\n\0]/.test(optionText)) throw new Error('Steam launch options must be a single line under 512 characters.');
     const parsedOptions = optionText.match(/(?:[^\s"]+|"[^"]*")+/g)?.map((arg) => arg.replace(/^"|"$/g, '')) || [];
+    let directProcessId = null;
     if (game.launchUri && game.provider === 'Steam' && game.appId && game.steamExecutable && await exists(game.steamExecutable)) {
       try {
         await launchExecutable(game.steamExecutable, ['-silent', '-applaunch', game.appId, ...parsedOptions], path.dirname(game.steamExecutable));
@@ -1602,13 +1640,76 @@ function registerIpc() {
       const error = await shell.openPath(game.shortcutPath);
       if (error) throw new Error(error);
     }
-    else if (game.executable && await exists(game.executable)) await launchExecutable(game.executable, game.args);
+    else if (game.executable && await exists(game.executable)) directProcessId = await launchExecutable(game.executable, game.args);
     else throw new Error('The game executable could not be found.');
     const settings = await readSettings();
     const playHistory = [gameId, ...(settings.playHistory || []).filter((id) => id !== gameId)].slice(0, 40);
     const playCounts = { ...(settings.playCounts || {}), [gameId]: Number(settings.playCounts?.[gameId] || 0) + 1 };
     await writeSettings({ playHistory, playCounts });
+    activeGameSession = { gameId, launchedAt: Date.now(), pid: directProcessId };
+    game.playCount = playCounts[gameId];
+    currentLibrary = [game, ...currentLibrary.filter((entry) => entry.id !== gameId)];
+    try {
+      const snapshot = await readLibrarySnapshot();
+      if (snapshot) await writeLibrarySnapshot({ ...snapshot, games: currentLibrary }, artworkScanEpoch);
+    } catch (error) {
+      console.warn('Could not update the cached recent-games order:', error.message);
+    }
     return true;
+  });
+  ipcMain.handle('game:active-session', () => {
+    if (!activeGameSession) return null;
+    const age = Date.now() - activeGameSession.launchedAt;
+    if (age > (activeGameSession.pid ? 4 * 60 * 60 * 1000 : 30 * 60 * 1000)) { activeGameSession = null; return null; }
+    if (activeGameSession.pid) {
+      try { process.kill(activeGameSession.pid, 0); }
+      catch { activeGameSession = null; return null; }
+    }
+    return { gameId: activeGameSession.gameId, verified: Boolean(activeGameSession.pid) };
+  });
+  ipcMain.handle('game:return', (_event, gameId) => {
+    if (!activeGameSession || activeGameSession.gameId !== gameId) throw new Error('This is not the last launched game.');
+    if (activeGameSession.pid) {
+      try { process.kill(activeGameSession.pid, 0); }
+      catch { activeGameSession = null; throw new Error('That game is no longer running.'); }
+    }
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+    return true;
+  });
+  ipcMain.handle('library:organize', (_event, action, payload = {}) => {
+    const operation = libraryOrganizationQueue.then(async () => {
+    const settings = await readSettings();
+    const favoriteGameIds = Array.isArray(settings.favoriteGameIds) ? [...settings.favoriteGameIds] : [];
+    const customCollections = Array.isArray(settings.customCollections) ? settings.customCollections.map((item) => ({ ...item, gameIds: [...(item.gameIds || [])] })) : [];
+    const gameId = String(payload.gameId || '');
+    if (['favorite', 'membership'].includes(action) || (action === 'create' && gameId)) {
+      if (!currentLibrary.some((game) => game.id === gameId)) throw new Error('Game is not in your library.');
+    }
+    if (action === 'favorite') {
+      const index = favoriteGameIds.indexOf(gameId);
+      if (index >= 0) favoriteGameIds.splice(index, 1);
+      else favoriteGameIds.unshift(gameId);
+    } else if (action === 'create') {
+      const name = String(payload.name || '').trim().slice(0, 40);
+      if (!name || customCollections.length >= 20) throw new Error('Enter a collection name (up to 20 collections).');
+      if (customCollections.some((item) => item.name.toLowerCase() === name.toLowerCase())) throw new Error('A collection with that name already exists.');
+      customCollections.push({ id: `collection-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`, name, gameIds: gameId ? [gameId] : [] });
+    } else if (action === 'membership') {
+      const collection = customCollections.find((item) => item.id === payload.collectionId);
+      if (!collection) throw new Error('Collection not found.');
+      const index = collection.gameIds.indexOf(gameId);
+      if (index >= 0) collection.gameIds.splice(index, 1);
+      else collection.gameIds.push(gameId);
+    } else if (action === 'delete') {
+      const index = customCollections.findIndex((item) => item.id === payload.collectionId);
+      if (index < 0) throw new Error('Collection not found.');
+      customCollections.splice(index, 1);
+    } else throw new Error('Unknown collection action.');
+    await writeSettings({ favoriteGameIds, customCollections });
+    return { favoriteGameIds, customCollections };
+    });
+    libraryOrganizationQueue = operation.catch(() => {});
+    return operation;
   });
   ipcMain.handle('launcher:steam-big-picture', async (_event, gameId) => {
     const game = currentLibrary.find((item) => item.id === gameId);
@@ -1900,6 +2001,7 @@ function registerIpc() {
     if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
     return true;
   });
+  ipcMain.handle('app:power', (_event, action) => runPowerAction(action, { demo: process.env.NEBULA_DEMO === '1' || process.env.NEBULA_REVIEW === '1' }));
   ipcMain.handle('app:quit', () => app.quit());
 }
 
